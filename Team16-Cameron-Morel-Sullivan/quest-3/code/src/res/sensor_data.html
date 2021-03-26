@@ -1,0 +1,347 @@
+<!--
+  HTML file that calls an Ajax GET request to load CSV sensor data to plot via 
+  CanvasJS.
+
+  Jonathan Cameron, DJ Morel, Ryan Sullivan, Oct. 2020
+-->
+
+<!DOCTYPE HTML>
+<html>
+  <head>  
+    <meta charset="UTF-8">
+    <script src="../library/canvasjs.min.js"></script>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+    <script>
+      function getDataPointsFromCSV(csv)
+      {
+        var dataPointsTemp = []
+        var dataPointsX = []
+        var dataPointsY = []
+        var dataPointsZ = []
+        var dataPointsR = []
+        var dataPointsP = []
+        var csvLines = []
+        var points = []
+
+        csvLines = csv.split(/[\r?\n|\r|\n]+/);
+
+        for (var i = 0; i < csvLines.length; i++)
+        {
+          if (csvLines[i].length > 0)
+          {
+            console.log(csvLines[i])
+            points = csvLines[i].split(",");
+            console.log(points)
+            dataPointsTemp.push({
+                x: (parseInt(points[0]) * 2),        // Record the time (mult since data collected every 2 seconds)
+                y: (parseFloat(points[1]) - 273.15)  // Record the temperature (convert K to C)
+            });
+            dataPointsX.push({
+                x: (parseInt(points[0]) * 2),        // Record the time (mult since data collected every 2 seconds)
+                y: (parseFloat(points[2]))     // Record the ultrasonic rangefinder (convert cm to m)
+            });
+            dataPointsY.push({
+                x: (parseInt(points[0]) * 2),        // Record the time (mult since data collected every 2 seconds)
+                y: (parseFloat(points[3]))     // Record the IR sensor (convert cm to m)
+            });
+            dataPointsZ.push({
+                x: (parseInt(points[0]) * 2),
+                y: (parseFloat(points[4]))
+            });
+            dataPointsR.push({
+                x: (parseInt(points[0]) * 2),
+                y: (parseFloat(points[5]))
+            });
+            dataPointsP.push({
+                x: (parseInt(points[0]) * 2),
+                y: (parseFloat(points[6]))
+            });
+          }
+        }
+
+        console.log("Temp\n")
+        console.log(dataPointsTemp)
+        console.log("X\n")
+        console.log(dataPointsX)
+        console.log("Y\n")
+        console.log(dataPointsY)
+        console.log("Z\n")
+        console.log(dataPointsZ)
+        console.log("R\n")
+        console.log(dataPointsR)
+        console.log("P\n")
+        console.log(dataPointsP)
+
+        return [dataPointsTemp, dataPointsX, dataPointsY, dataPointsZ, dataPointsR, dataPointsP];
+      }
+
+      function loadGraph() {
+        $.ajax(
+        {
+          // Note: IP address MUST match the IP address the client uses in the browser
+          type: 'GET',
+          url: 'http://localhost:8080/res/sensor_data.csv'  // Use this one for preliminary laptop tests
+          //url: 'http://192.168.1.115:8080/res/sensor_data.csv'  // Use this one for Raspberry Pi server
+          // url: 'http://<your web address:the port it's set up on>/res/sensor_data.csv' use this so that it can be accessed globally
+        })
+        // On a successful GET request, plot the CSV data
+        .done(function(data){
+            var dataPointsVector = getDataPointsFromCSV(data);
+
+            var chart0 = new CanvasJS.Chart("chartContainer0", {
+                title: {
+                    text: "Temperature Data"
+                },
+                axisX: {
+                    valueFormatString: "####s"
+                },
+                axisY2: {
+                    title: "Temperature (C)",
+                    minimum: 0,
+                    maximum: 100
+                },
+                toolTip: {
+                    shared: true
+                },
+                legend: {
+                    cursor: "pointer",
+                    verticalAlign: "top",
+                    horizontalAlign: "center",
+                    dockInsidePlotArea: true,
+                    itemclick: toogleDataSeries
+                },
+                data: [{
+                    type:"line",
+                    axisYType: "secondary",
+                    name: "Temperature (C)",
+                    showInLegend: true,
+                    markerSize: 0,
+                    lineColor: "blue",
+                    yValueFormatString: "####.##C",
+                    dataPoints: dataPointsVector[0]
+                }]
+            });
+            var chart1 = new CanvasJS.Chart("chartContainer1", {
+                title: {
+                    text: "X Accelerometer"
+                },
+                axisX: {
+                    valueFormatString: "####s"
+                },
+                axisY2: {
+                    title: "X acceleration (m/s^2)",
+                    minimum: -30.00,
+                    maximum: 30.00
+                },
+                toolTip: {
+                    shared: true
+                },
+                legend: {
+                    cursor: "pointer",
+                    verticalAlign: "top",
+                    horizontalAlign: "center",
+                    dockInsidePlotArea: true,
+                    itemclick: toogleDataSeries
+                },
+                data: [{
+                    type: "line",
+                    axisYType: "secondary",
+                    name: "X acceleration (m/s^2)",
+                    showInLegend: true,
+                    markerSize: 0,
+                    lineColor: "green",
+                    yValueFormatString: "##.####N",
+                    dataPoints: dataPointsVector[1]
+                }]
+            });
+            var chart2 = new CanvasJS.Chart("chartContainer2", {
+                title: {
+                    text: "Y Accelerometer"
+                },
+                axisX: {
+                    valueFormatString: "####s"
+                },
+                axisY2: {
+                    title: "Y acceleration (m/s^2)",
+                    minimum: -30.00,
+                    maximum: 30.00
+                },
+                toolTip: {
+                    shared: true
+                },
+                legend: {
+                    cursor: "pointer",
+                    verticalAlign: "top",
+                    horizontalAlign: "center",
+                    dockInsidePlotArea: true,
+                    itemclick: toogleDataSeries
+                },
+                data: [{
+                    type: "line",
+                    axisYType: "secondary",
+                    name: "Y acceleration (m/s^2)",
+                    showInLegend: true,
+                    markerSize: 0,
+                    lineColor: "red",
+                    yValueFormatString: "##.####N",
+                    dataPoints: dataPointsVector[2]
+                }]
+            });
+            var chart3 = new CanvasJS.Chart("chartContainer3", {
+                title: {
+                    text: "Z Accelerometer"
+                },
+                axisX: {
+                    valueFormatString: "####s"
+                },
+                axisY2: {
+                    title: "Z acceleration (m/s^2)",
+                    minimum: -30.00,
+                    maximum: 30.00
+                },
+                toolTip: {
+                    shared: true
+                },
+                legend: {
+                    cursor: "pointer",
+                    verticalAlign: "top",
+                    horizontalAlign: "center",
+                    dockInsidePlotArea: true,
+                    itemclick: toogleDataSeries
+                },
+                data: [{
+                    type: "line",
+                    axisYType: "secondary",
+                    name: "Z acceleration (m/s^2)",
+                    showInLegend: true,
+                    markerSize: 0,
+                    lineColor: "red",
+                    yValueFormatString: "##.####N",
+                    dataPoints: dataPointsVector[3]
+                }]
+            });
+            var chart4 = new CanvasJS.Chart("chartContainer4", {
+                title: {
+                    text: "Roll"
+                },
+                axisX: {
+                    valueFormatString: "####s"
+                },
+                axisY2: {
+                    title: "Rolliness",
+                    minimum: -180.00,
+                    maximum: 180.00
+                },
+                toolTip: {
+                    shared: true
+                },
+                legend: {
+                    cursor: "pointer",
+                    verticalAlign: "top",
+                    horizontalAlign: "center",
+                    dockInsidePlotArea: true,
+                    itemclick: toogleDataSeries
+                },
+                data: [{
+                    type: "line",
+                    axisYType: "secondary",
+                    name: "Rolliness",
+                    showInLegend: true,
+                    markerSize: 0,
+                    lineColor: "red",
+                    yValueFormatString: "##.####N",
+                    dataPoints: dataPointsVector[4]
+                }]
+            });
+            var chart5 = new CanvasJS.Chart("chartContainer5", {
+                title: {
+                    text: "Pitch"
+                },
+                axisX: {
+                    valueFormatString: "####s"
+                },
+                axisY2: {
+                    title: "Pitchiness",
+                    minimum: -180.00,
+                    maximum: 180.00
+                },
+                toolTip: {
+                    shared: true
+                },
+                legend: {
+                    cursor: "pointer",
+                    verticalAlign: "top",
+                    horizontalAlign: "center",
+                    dockInsidePlotArea: true,
+                    itemclick: toogleDataSeries
+                },
+                data: [{
+                    type: "line",
+                    axisYType: "secondary",
+                    name: "Pitchiness",
+                    showInLegend: true,
+                    markerSize: 0,
+                    lineColor: "red",
+                    yValueFormatString: "##.####N",
+                    dataPoints: dataPointsVector[5]
+                }]
+            });
+chart0.render();
+chart1.render();
+chart2.render();
+chart3.render();
+chart4.render();
+chart5.render();
+	      })
+        .fail(function(xhrm, status, errorThrown){
+            console.log(errorThrown)
+            console.log(status)
+            console.log(xhrm)
+          // The GET request failed for some reason
+          alert('CSV GET Request Failed...')
+        })
+      }
+      // Make an Ajax GET request to pull the sensor data CSV from localhost (must follow the Same-Origin Policy to avoid CORS error)
+      loadGraph()
+      setInterval(loadGraph, 1000);
+
+      function toggleDataSeries(e)
+      {
+        if (typeof(e.dataSeries.visible) === "undefined" || e.dataSeries.visible)
+        {
+		      e.dataSeries.visible = false;
+        }
+        else
+        {
+		      e.dataSeries.visible = true;
+	      }
+	      chart.render();
+      }
+
+      function updatePWMValue(event) {
+          $.ajax( {
+              type: "POST",
+              url: "http://192.168.1.155:6969/postPWMVal",
+              data:'{ "intensity" : ' + event.value + " }",
+              contentType: "application/json; charset=utf-8",
+              dataType: "json",
+              success: (result => {
+                  console.log("Sent updated PWM intensity value to server")
+              })
+          })
+      }
+
+    </script>
+  </head>
+
+  <body>
+    <iframe src="http://192.168.1.155:8081" height="640" width="480" title="Live Video"></iframe>
+    <input type="range" min="0" max="9" value="0" class="slider" id="PWMRange" onchange="updatePWMValue(this);">
+    <div id="chartContainer0" style="height: 370px; max-width: 920px; margin: 0px auto;"></div>
+    <div id="chartContainer1" style="height: 370px; max-width: 920px; margin: 0px auto;"></div>
+    <div id="chartContainer2" style="height: 370px; max-width: 920px; margin: 0px auto;"></div>
+    <div id="chartContainer3" style="height: 370px; max-width: 920px; margin: 0px auto;"></div>
+    <div id="chartContainer4" style="height: 370px; max-width: 920px; margin: 0px auto;"></div>
+    <div id="chartContainer5" style="height: 370px; max-width: 920px; margin: 0px auto;"></div>
+  </body>
+</html>

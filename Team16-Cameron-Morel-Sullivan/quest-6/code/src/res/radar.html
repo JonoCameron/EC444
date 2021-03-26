@@ -1,0 +1,130 @@
+<!--
+  HTML file to display a radar chart, camera livestream, sensor readings, and 
+  a couple of buttons for remotely controlling the dish ESP.
+
+  See Chart.js GitHub page for the .min.js file
+    https://github.com/chartjs/Chart.js/releases/tag/v2.9.4
+
+  Jonathan Cameron, DJ Morel, Ryan Sullivan, Dec. 2020
+-->
+
+<!DOCTYPE HTML>
+<html>
+  <head>  
+    <meta charset="UTF-8">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+    <script>
+      //const web_url = 'http://localhost:8080/'
+      const web_url = 'http://jonoec444.hopto.org:12345/'
+      const loadGraph = () => {
+        $.ajax({
+          type: 'GET',
+          url: web_url + 'sensor_data'
+        })
+        .done((sensor_data_arr) => {
+          console.log(sensor_data_arr[0]['A'])
+          var marksCanvas = document.getElementById("marksChart");
+          console.log("Initiating example chart\n")
+          var marksData = {
+            datasets: [{
+              label: "Radar Data",
+              backgroundColor: "rgba(200,0,0,0.6)",
+              data: sensor_data_arr
+            }]
+          };
+  
+          var radarChart = new Chart(marksCanvas, {
+            type: 'scatter',
+            data: marksData,
+            options: {
+              animation: false
+            }
+          });
+        })
+      }
+      const update_sensors = () => {
+        $.ajax({
+          type: 'GET',
+          url: web_url + 'refresh_data'
+        })
+        .done((data) => {
+          //console.log("Hey data!" + data);
+          // Now adjust the sensor reading fields
+          document.getElementById("Temperature").value = data.T + " K";
+          document.getElementById("xAxis").value = data.X + " m/s^2";
+          document.getElementById("yAxis").value = data.Y + " m/s^2";
+          document.getElementById("zAxis").value = data.Z + " m/s^2";
+          document.getElementById("Roll").value = data.R + " degrees";
+          document.getElementById("Pitch").value = data.P + " degrees";
+
+          // Update the current status of the dish ESP
+          if ( (data.s == 2222.00) && (data.A == 5.0) )
+          {
+            document.getElementById("Status").value = "OFF";
+          }
+          else if (data.s == 2222.00)
+          {
+            document.getElementById("Status").value = "ON (stop pending)";
+          }
+          else if (data.s == 1111.00)
+          {
+            document.getElementById("Status").value = "ON";
+          }
+          else
+          {
+            document.getElementById("Status").value = "OFF";
+          }
+        });
+      }
+
+      window.onload = function() {
+        loadGraph()
+        update_sensors()
+      }
+      setInterval(loadGraph, 1000)
+      setInterval(update_sensors, 1000)
+    </script>
+  </head>
+
+  <body>
+    <img src="http://jonoec444.hopto.org:8081" height="480" width="640" title="Live Video"></img>
+
+    <div class="toggle">
+      <div class="toggle_button_on">
+        <form action="/toggleON" method="POST">
+          <button type="submit">Start Radar</button>
+        </form>
+      </div>
+      <div class="toggle_button_off">
+        <form action="/toggleOFF" method="POST">
+          <button type="submit">Stop Radar</button>
+        </form>
+      </div>
+      <label for="Status">Radar Status:</label>
+      <input type="text" id="Status" name="Status" value="" readonly><br></br>
+    </div>
+
+    <div class="display">
+      <label for="Temperature">Temperature:</label>
+      <input type="text" id="Temperature" name="Temperature" value="0 K" readonly><br></br>
+      <label for="xAxis">X-Axis Acceleration:</label>
+      <input type="text" id="xAxis" name="xAxis" value="0 m/s^2" readonly><br></br>
+      <label for="yAxis">Y-Axis Acceleration:</label>
+      <input type="text" id="yAxis" name="yAxis" value="0 m/s^2" readonly><br></br>
+      <label for="zAxis">Z-Axis Acceleration:</label>
+      <input type="text" id="zAxis" name="zAxis" value="0 m/s^2" readonly><br></br>
+      <label for="Roll">Roll:</label>
+      <input type="text" id="Roll" name="Roll" value="0 degrees" readonly><br></br>
+      <label for="Pitch">Pitch:</label>
+      <input type="text" id="Pitch" name="Pitch" value="0 degrees" readonly><br></br>
+    </div>
+
+    <div class="chart-container" style="position: relative; height:40vh; width:80vw">
+	<canvas id="marksChart"></canvas>
+    </div>
+  </body>
+
+</html>
+
+

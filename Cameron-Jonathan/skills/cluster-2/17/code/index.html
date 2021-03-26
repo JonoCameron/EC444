@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+  <head><title>Test page</title></head>
+<body>
+
+<h1>My First Heading</h1>
+<p>My first paragraph.</p>
+<div id="div1"></div>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script type="text/javascript">
+window.onload = function () {
+  $.ajax({url: "/data", success: function(result){
+    var dataPoints = [];
+
+    function getDataPointsFromCSV(csv, stonk) {
+        var dataPoints = csvLines = points = [];
+        csvLines = csv.split(/[\r?\n|\r|\n]+/);         
+            
+        jQuery.each(result, function(i, val) {
+            if (csvLines[i].length > 0) {
+                val = csvLines[i].split(",");
+                if(val[1] == stonk){
+                    dataPoints.push({ 
+                        x: new Date(val[0], 10, 2020), 
+                        y: parseFloat(val[2])		
+                    });
+                }
+            }
+        }
+        return dataPoints;
+    }
+
+    
+
+    //We add contents HTML content to page
+    $("#div1").html(dataPoints);
+  }});
+}
+</script>
+</body>
+</html>

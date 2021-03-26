@@ -1,0 +1,205 @@
+<!--
+  HTML file that calls an Ajax GET request to load CSV sensor data to plot via 
+  CanvasJS.
+
+  Jonathan Cameron, DJ Morel, Ryan Sullivan, Oct. 2020
+-->
+
+<!DOCTYPE HTML>
+<html>
+  <head>  
+    <meta charset="UTF-8">
+    <script src="../library/canvasjs.min.js"></script>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+    <script>
+
+      function getDataPointsFromCSV(csv)
+      {
+        var dataPointsTemp = []
+        var dataPointsUS = []
+        var dataPointsIR = []
+        var csvLines = []
+        var points = []
+
+        csvLines = csv.split(/[\r?\n|\r|\n]+/);
+
+        for (var i = 0; i < csvLines.length; i++)
+        {
+          if (csvLines[i].length > 0)
+          {
+            console.log(csvLines[i])
+            points = csvLines[i].split(",");
+            console.log(points)
+            dataPointsTemp.push({
+                x: (parseInt(points[0]) * 2),        // Record the time (mult since data collected every 2 seconds)
+                y: (parseFloat(points[1]) - 273.15)  // Record the temperature (convert K to C)
+            });
+            dataPointsIR.push({
+                x: (parseInt(points[0]) * 2),        // Record the time (mult since data collected every 2 seconds)
+                y: (parseFloat(points[2]) / 100)     // Record the ultrasonic rangefinder (convert cm to m)
+            });
+            dataPointsUS.push({
+                x: (parseInt(points[0]) * 2),        // Record the time (mult since data collected every 2 seconds)
+                y: (parseFloat(points[3]) / 100)     // Record the IR sensor (convert cm to m)
+            });
+          }
+        }
+
+        console.log("Temp\n")
+        console.log(dataPointsTemp)
+        console.log("US\n")
+        console.log(dataPointsUS)
+        console.log("IR\n")
+        console.log(dataPointsIR)
+        return [dataPointsTemp, dataPointsUS, dataPointsIR];
+      }
+
+      function loadGraph() {
+        $.ajax(
+        {
+          // Note: IP address MUST match the IP address the client uses in the browser
+          type: 'GET',
+          //url: 'http://localhost:8080/res/sensor_data.csv'  // Use this one for preliminary laptop tests
+          url: 'http://192.168.1.23:8080/res/sensor_data.csv'  // Use this one for Raspberry Pi server
+        })
+        // On a successful GET request, plot the CSV data
+        .done(function(data){
+            var dataPointsVector = getDataPointsFromCSV(data);
+
+            var chart = new CanvasJS.Chart("chartContainer", {
+                title: {
+                    text: "Temperature Data"
+                },
+                axisX: {
+                    valueFormatString: "####s"
+                },
+                axisY2: {
+                    title: "Temperature (C)",
+                    minimum: 0,
+                    maximum: 100
+                },
+                toolTip: {
+                    shared: true
+                },
+                legend: {
+                    cursor: "pointer",
+                    verticalAlign: "top",
+                    horizontalAlign: "center",
+                    dockInsidePlotArea: true,
+                    itemclick: toogleDataSeries
+                },
+                data: [{
+                    type:"line",
+                    axisYType: "secondary",
+                    name: "Temperature (C)",
+                    showInLegend: true,
+                    markerSize: 0,
+                    lineColor: "blue",
+                    yValueFormatString: "####.##C",
+                    dataPoints: dataPointsVector[0]
+                }]
+            });
+            var chart1 = new CanvasJS.Chart("chartContainer1", {
+                title: {
+                    text: "Ultrasonic Data"
+                },
+                axisX: {
+                    valueFormatString: "####s"
+                },
+                axisY2: {
+                    title: "Distance (m)",
+                    minimum: 0.02,
+                    maximum: 4.00
+                },
+                toolTip: {
+                    shared: true
+                },
+                legend: {
+                    cursor: "pointer",
+                    verticalAlign: "top",
+                    horizontalAlign: "center",
+                    dockInsidePlotArea: true,
+                    itemclick: toogleDataSeries
+                },
+                data: [{
+                    type: "line",
+                    axisYType: "secondary",
+                    name: "Ultrasonic Readings",
+                    showInLegend: true,
+                    markerSize: 0,
+                    lineColor: "green",
+                    yValueFormatString: "##.####m",
+                    dataPoints: dataPointsVector[1]
+                }]
+            });
+            var chart2 = new CanvasJS.Chart("chartContainer2", {
+                title: {
+                    text: "IR Sensor Data"
+                },
+                axisX: {
+                    valueFormatString: "####s"
+                },
+                axisY2: {
+                    title: "Distance (m)",
+                    minimum: 0.20,
+                    maximum: 1.50
+                },
+                toolTip: {
+                    shared: true
+                },
+                legend: {
+                    cursor: "pointer",
+                    verticalAlign: "top",
+                    horizontalAlign: "center",
+                    dockInsidePlotArea: true,
+                    itemclick: toogleDataSeries
+                },
+                data: [{
+                    type: "line",
+                    axisYType: "secondary",
+                    name: "IR Readings",
+                    showInLegend: true,
+                    markerSize: 0,
+                    lineColor: "red",
+                    yValueFormatString: "##.####m",
+                    dataPoints: dataPointsVector[2]
+                }]
+            });
+chart.render();
+chart1.render();
+chart2.render();
+	      })
+        .fail(function(xhrm, status, errorThrown){
+            console.log(errorThrown)
+            console.log(status)
+            console.log(xhrm)
+          // The GET request failed for some reason
+          alert('CSV GET Request Failed...')
+        })
+      }
+      // Make an Ajax GET request to pull the sensor data CSV from localhost (must follow the Same-Origin Policy to avoid CORS error)
+      loadGraph()
+      setInterval(loadGraph, 1000);
+
+      function toogleDataSeries(e)
+      {
+        if (typeof(e.dataSeries.visible) === "undefined" || e.dataSeries.visible)
+        {
+		      e.dataSeries.visible = false;
+        }
+        else
+        {
+		      e.dataSeries.visible = true;
+	      }
+	      chart.render();
+      }
+
+    </script>
+  </head>
+
+  <body>
+    <div id="chartContainer" style="height: 370px; max-width: 920px; margin: 0px auto;"></div>
+    <div id="chartContainer1" style="height: 370px; max-width: 920px; margin: 0px auto;"></div>
+    <div id="chartContainer2" style="height: 370px; max-width: 920px; margin: 0px auto;"></div>
+  </body>
+</html>
